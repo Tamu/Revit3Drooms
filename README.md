@@ -8,8 +8,8 @@ Thanks to [The Building Coder](http://thebuildingcoder.typepad.com) for many exa
 ## Author
 
 Thomas Hächler,
-[platform5](http://platform5rd.com)
-[Mintello](http://mintello.com)
+[platform5](http://platform5rd.com),
+[Mintello](http://mintello.com),
 [Swiss-BIM](http://swiss-bim.com)
 
 ## License
