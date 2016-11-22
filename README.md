@@ -6,7 +6,7 @@ You can compile and start the command in the menu :
 
 ![menu](Resources/menu.png)
 
-The function create Direct Shape Elements with Revit Rooms :
+The function create an Direct Shape Elements for every Revit Room :
 
 ![2DRoom](Resources/2droom.png)
 
