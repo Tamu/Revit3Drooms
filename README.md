@@ -13,7 +13,6 @@ The function create an Direct Shape Elements for every Revit Room :
 ![3DRoom](Resources/3droom.png)
 
 
-The last update is the best approach with Direct Shape Elements : Rooms3DdirectShape.cs
 Thanks for your sujestions and comments.
 
 Thanks to [The Building Coder](http://thebuildingcoder.typepad.com) for many examples.
