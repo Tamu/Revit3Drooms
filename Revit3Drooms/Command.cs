@@ -1,30 +1,26 @@
-﻿#region Namespaces
+#region Namespaces
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
-using System.Windows.Forms;
-using SaveFileDialog = System.Windows.Forms.SaveFileDialog;
-using DialogResult = System.Windows.Forms.DialogResult;
-using System.Collections;
-using System.Text;
 using Autodesk.Revit.DB.Architecture;
 using System.Diagnostics;
+using Autodesk.Revit.DB.ExtensibleStorage;
 #endregion // Namespaces
 
-
-
-public class Rooms3DdirectShape
+namespace Revit3Drooms
 {
-
-    // 3D Rooms Création
+    
+    // 3D Rooms Cr�ation
     [Transaction(TransactionMode.Manual)]
-    public class Creat3Drooms : IExternalCommand
+    public class Create3Drooms : IExternalCommand
     {
+
+        public static Guid _schemaGuid = new Guid("420080CB-DA99-22DC-9415-E53F280AA1F0");
+
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
 
@@ -34,13 +30,77 @@ public class Rooms3DdirectShape
             Autodesk.Revit.DB.View view;
             view = doc.ActiveView;
             Autodesk.Revit.ApplicationServices.Application app = uiapp.Application;
+
+
+            // Deleting existing DirectShape
+            // get ready to filter across just the elements visible in a view 
+            FilteredElementCollector coll = new FilteredElementCollector(doc, view.Id);
+            coll.OfClass(typeof(DirectShape));
+            IEnumerable<DirectShape> DSdelete = coll.Cast<DirectShape>();
+
+            using (Transaction tx = new Transaction(doc))
+            {
+                tx.Start("Delete elements");
+
+                try
+                {
+
+                    foreach (DirectShape ds in DSdelete)
+                    {
+                        ICollection<ElementId> ids = doc.Delete(ds.Id);
+                    }
+
+                    tx.Commit();
+                }
+                catch (ArgumentException)
+                {
+                    tx.RollBack();
+                }
+            }
+
+
+            // Delete Shema
+            try
+            {
+                using (Transaction trans = new Transaction(doc))
+                {
+                    
+                    IList<Schema> schemasIn = Schema.ListSchemas();
+                    foreach (Schema s in schemasIn)
+                    {
+                        Console.WriteLine("In > " + s.SchemaName + " : " + s.GUID);
+                    }
+
+                    trans.Start("Delete Schema");
+                    Schema schemaOld = Schema.Lookup(_schemaGuid);
+                    Schema.EraseSchemaAndAllEntities(schemaOld, false);
+                    trans.Commit();
+
+                    IList<Schema> schemasOut = Schema.ListSchemas();
+                    foreach (Schema s in schemasOut)
+                    {
+                        Console.WriteLine("Out > " + s.SchemaName + " : " + s.GUID);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            
+
+            // Def Site + Building
+            double roomNbre = 0;
+            string filename = doc.Title;
+
+
             FilteredElementCollector m_Collector = new FilteredElementCollector(doc);
             m_Collector.OfCategory(BuiltInCategory.OST_Rooms);
             IList<Element> m_Rooms = m_Collector.ToElements();
-            Double roomNbre = 0;
 
             // Create Shema Data
-            SchemaBuilder schemaBuilder = new SchemaBuilder(new Guid("620080CB-DA99-40DC-9415-E53F280AA1F0"));
+            SchemaBuilder schemaBuilder = new SchemaBuilder(_schemaGuid);
 
             // allow anyone to read the object
             schemaBuilder.SetReadAccessLevel(
@@ -51,43 +111,56 @@ public class Rooms3DdirectShape
               AccessLevel.Vendor);
 
             // required because of restricted write-access
-            schemaBuilder.SetVendorId("XXXX"); // same than the XML start file
-            
+            schemaBuilder.SetVendorId("P5RD");
+
             // create a field to store string
             Dictionary<string, string> listFiled = new Dictionary<string, string>();
+            listFiled.Add("accessories", "");
             listFiled.Add("area", "");
+            listFiled.Add("booking", "");
             listFiled.Add("building", "");
             listFiled.Add("categorie", "");
+            listFiled.Add("center", "");
+            listFiled.Add("department", "");
+            listFiled.Add("division", "");
             listFiled.Add("label", "");
             listFiled.Add("labelPosition", "");
             listFiled.Add("level", "");
             listFiled.Add("name", "");
+            listFiled.Add("occupationType", "");
             listFiled.Add("revit_id", "");
             listFiled.Add("room", "");
+            listFiled.Add("sap", "");
+            listFiled.Add("service", "");
             listFiled.Add("site", "");
             listFiled.Add("styleCategory", "");
             listFiled.Add("team", "");
             listFiled.Add("type", "");
+            listFiled.Add("videoConferencing", "");
             listFiled.Add("workset", "");
+            listFiled.Add("update", "");
 
             foreach (KeyValuePair<string, string> p in listFiled)
             {
                 FieldBuilder fieldBuilder = schemaBuilder.AddSimpleField(p.Key, typeof(String));
                 fieldBuilder.SetDocumentation("Rooms infos");
+
             }
 
 
-            schemaBuilder.SetSchemaName("Room3D");
+            schemaBuilder.SetSchemaName("testRoom");
             Schema schema = schemaBuilder.Finish(); // register the Schema object
-            
+
             //  Iterate the list and gather a list of boundaries
             foreach (Room room in m_Rooms)
             {
-                roomNbre += 1;
-                
+
                 //  Avoid unplaced rooms
                 if (room.Area > 1)
                 {
+
+
+                    String _family_name = "testRoom-" + room.UniqueId.ToString();
 
                     using (Transaction tr = new Transaction(doc))
                     {
@@ -97,28 +170,30 @@ public class Rooms3DdirectShape
 
                         BoundingBoxXYZ bb = room.get_BoundingBox(null);
                         XYZ pt = new XYZ((bb.Min.X + bb.Max.X) / 2, (bb.Min.Y + bb.Max.Y) / 2, bb.Min.Z);
-                        RvtVa3c.Va3cExportContext.PointInt ptInt = new RvtVa3c.Va3cExportContext.PointInt(pt, true);
-                        long ptIntYplus = ptInt.Y;
 
 
                         //  Get the room boundary
-                        IList<IList<BoundarySegment>> boundaries = room.GetBoundarySegments(new SpatialElementBoundaryOptions());
+                        IList<IList<BoundarySegment>> boundaries = room.GetBoundarySegments(new SpatialElementBoundaryOptions()); // 2012
+
 
                         // a room may have a null boundary property:
-
                         int n = 0;
 
                         if (null != boundaries)
                         {
-                            n = boundaries.Count; // 2012
+                            n = boundaries.Count;
                         }
 
 
                         //  The array of boundary curves
                         CurveArray m_CurveArray = new CurveArray();
                         //  Iterate to gather the curve objects
+
                         List<Curve> profile = new List<Curve>();
-                      
+                        TessellatedShapeBuilder builder = new TessellatedShapeBuilder();
+                        builder.OpenConnectedFaceSet(true);
+
+
                         if (0 < n)
                         {
                             int iBoundary = 0, iSegment;
@@ -140,67 +215,52 @@ public class Rooms3DdirectShape
                         }
 
 
+
                         try
                         {
-                            
+
                             // Add Direct Shape
                             CurveLoop curveLoop = CurveLoop.Create(profile);
                             List<CurveLoop> curveLoopList = new List<CurveLoop>();
                             curveLoopList.Add(curveLoop);
 
                             SolidOptions options = new SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId);
-                            
+
+                            Frame frame = new Frame(pt, XYZ.BasisX, -XYZ.BasisZ, XYZ.BasisY);
+
                             //  Simple insertion point
                             XYZ pt1 = new XYZ(0, 0, 0);
                             //  Our normal point that points the extrusion directly up
                             XYZ ptNormal = new XYZ(0, 0, 100);
-                           
+                            //  The plane to extrude the mass from
+                            Plane m_Plane = app.Create.NewPlane(ptNormal, pt1);
+                            // SketchPlane m_SketchPlane = m_FamDoc.FamilyCreate.NewSketchPlane(m_Plane);
+                            SketchPlane m_SketchPlane = SketchPlane.Create(doc, m_Plane); // 2014
+
+                            Solid roomSolid;
+
                             // Solid roomSolid = GeometryCreationUtilities.CreateRevolvedGeometry(frame, new CurveLoop[] { curveLoop }, 0, 2 * Math.PI, options);
-                            Solid roomSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curveLoopList, ptNormal, 1);
+                            roomSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curveLoopList, ptNormal, 1);
                             
-                            DirectShape ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel),
-                                                                            "room3Dds",
-                                                                             room.UniqueId.ToString());
+                            DirectShape ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel), "3drooms", _family_name);
 
                             ds.SetShape(new GeometryObject[] { roomSolid });
-                            
 
 
                             // Add data
-                            
-                            Dictionary<string, string> udroom = RvtVa3c.Util.GetElementProperties(room, true);
+                            Dictionary<string, string> udroom = Revit3Drooms.Util.GetElementProperties(room, true);
                             Dictionary<string, string> udroomNew = new Dictionary<string, string>();
-                            
+
                             foreach (KeyValuePair<string, string> p in udroom)
                             {
-                                string dKey = p.Key;
-                                string dValue = p.Value;
-
-                                switch (dKey.ToUpper())
+                                if (p.Key.ToLower() == "name")
                                 {
-                                    case "ROOM":
-                                        dKey = "room";
-                                        break;
-                                    case "NIVEAU":
-                                        dKey = "level";
-                                        break;
-                                    case "NOM":
-                                        dKey = "name";
-                                        if (dValue == "") { dValue = "D00_000"; }
-                                        break;
-                                    case "SOUS-PROJET":
-                                        dKey = "workset";
-                                        break;
-                                    default:
-                                        dKey = "";
-                                        break;
+                                    udroomNew.Add(p.Key, p.Value);
                                 }
-
-                                if (dKey != "")
+                                else if (p.Key.ToLower() == "niveau")
                                 {
-                                    udroomNew.Add(dKey, dValue);
+                                    udroomNew.Add("level", p.Value);
                                 }
-
                             }
 
                             udroomNew.Add("area", room.Area.ToString());
@@ -209,7 +269,6 @@ public class Rooms3DdirectShape
 
 
                             // Create Parameter
-
                             try
                             {
                                 // create an entity (object) for this schema (class)
@@ -217,19 +276,16 @@ public class Rooms3DdirectShape
 
                                 foreach (KeyValuePair<string, string> p in udroomNew)
                                 {
-
                                     // get the field from the schema
                                     Field fieldSpliceLocation = schema.GetField(p.Key);
-                                    entity.Set<String>(fieldSpliceLocation, p.Value.ToString());  // , DisplayUnitType.DUT_METERS); // set the value for this entity
+                                    entity.Set<String>(fieldSpliceLocation, p.Value.ToString());  // set the value for this entity
                                     ds.SetEntity(entity); // store the entity in the element
-
                                 }
                             }
                             catch (Exception s)
                             {
                                 Console.WriteLine(s.Message);
                             }
-
 
                             tr.Commit();
 
@@ -238,8 +294,9 @@ public class Rooms3DdirectShape
                             Entity retrievedEntity = ds.GetEntity(schema);
 
                             String retrievedData = retrievedEntity.Get<String>(
-                              schema.GetField("area")); //,DisplayUnitType.DUT_METERS);
+                              schema.GetField("building"));
 
+                            roomNbre += 1;
 
                         }
                         catch (Exception e)
@@ -248,21 +305,16 @@ public class Rooms3DdirectShape
 
                         }
 
-
                     }
-
-
 
                 }
             }
 
-
             Debug.Print("Rooms total : {0}", roomNbre);
+            Console.WriteLine("Total Rooms : " + roomNbre + "/" + m_Rooms.Count.ToString());
             return Result.Succeeded;
 
         }
 
     }
-
-
 }

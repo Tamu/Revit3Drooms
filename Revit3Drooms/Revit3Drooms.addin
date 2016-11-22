@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Text>Rooms Tools</Text>
+    <Description>platform5 Tools</Description>
+    <Assembly>Revit3Drooms.dll</Assembly>
+    <FullClassName>Revit3Drooms.Command</FullClassName>
+    <ClientId>44d6d621-6e43-4e47-bc78-b4f3742f7212</ClientId>
+    <VendorId>P5RD</VendorId>
+    <VendorDescription>platform5</VendorDescription>
+  </AddIn>
+  <AddIn Type="Application">
+    <Name>RoomsTools</Name>
+    <Assembly>Revit3Drooms.dll</Assembly>
+    <FullClassName>Revit3Drooms.App</FullClassName>
+    <ClientId>44b6fa8c-524f-464c-bb11-8bf11ed63868</ClientId>
+    <VendorId>P5RD</VendorId>
+    <VendorDescription>platform5</VendorDescription>
+  </AddIn>
+</RevitAddIns>
