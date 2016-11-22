@@ -1,8 +1,17 @@
 # Revit3Drooms
 Create 3D Rooms for Revit 2016.
 
-The last update is the best approach with Direct Shape Elements : Rooms3DdirectShape.cs
 
+You can compile and start the command in the menu : 
+![menu](Resources/menu.png)
+
+The function create Direct Shape Elements with Revit Rooms :
+
+![2DRoom](Resources/2droom.png)
+![3DRoom](Resources/3droom.png)
+
+
+The last update is the best approach with Direct Shape Elements : Rooms3DdirectShape.cs
 Thanks for your sujestions and comments.
 
 Thanks to [The Building Coder](http://thebuildingcoder.typepad.com) for many examples.
