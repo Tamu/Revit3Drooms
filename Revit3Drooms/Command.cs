@@ -12,7 +12,7 @@ using Autodesk.Revit.DB.ExtensibleStorage;
 
 namespace Revit3Drooms
 {
-    
+
     // 3D Rooms Création
     [Transaction(TransactionMode.Manual)]
     public class Create3Drooms : IExternalCommand
@@ -64,7 +64,7 @@ namespace Revit3Drooms
             {
                 using (Transaction trans = new Transaction(doc))
                 {
-                    
+
                     IList<Schema> schemasIn = Schema.ListSchemas();
                     foreach (Schema s in schemasIn)
                     {
@@ -88,7 +88,7 @@ namespace Revit3Drooms
             {
                 Console.WriteLine(ex.Message);
             }
-            
+
 
             // Def Site + Building
             double roomNbre = 0;
@@ -189,10 +189,12 @@ namespace Revit3Drooms
                         CurveArray m_CurveArray = new CurveArray();
                         //  Iterate to gather the curve objects
 
-                        List<Curve> profile = new List<Curve>();
+                       
                         TessellatedShapeBuilder builder = new TessellatedShapeBuilder();
                         builder.OpenConnectedFaceSet(true);
 
+                        // Add Direct Shape
+                        List<CurveLoop> curveLoopList = new List<CurveLoop>();
 
                         if (0 < n)
                         {
@@ -200,8 +202,10 @@ namespace Revit3Drooms
 
                             foreach (IList<BoundarySegment> b in boundaries) // 2012
                             {
+                                List<Curve> profile = new List<Curve>();
                                 ++iBoundary;
                                 iSegment = 0;
+
                                 foreach (BoundarySegment s in b)
                                 {
                                     ++iSegment;
@@ -211,18 +215,27 @@ namespace Revit3Drooms
 
                                 }
 
+
+                                try
+                                {
+                                    CurveLoop curveLoop = CurveLoop.Create(profile);
+                                    curveLoopList.Add(curveLoop);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine(ex.Message);
+                                }
+
                             }
+
+
+
                         }
 
 
 
                         try
                         {
-
-                            // Add Direct Shape
-                            CurveLoop curveLoop = CurveLoop.Create(profile);
-                            List<CurveLoop> curveLoopList = new List<CurveLoop>();
-                            curveLoopList.Add(curveLoop);
 
                             SolidOptions options = new SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId);
 
@@ -241,7 +254,7 @@ namespace Revit3Drooms
 
                             // Solid roomSolid = GeometryCreationUtilities.CreateRevolvedGeometry(frame, new CurveLoop[] { curveLoop }, 0, 2 * Math.PI, options);
                             roomSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curveLoopList, ptNormal, 1);
-                            
+
                             DirectShape ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel), "3drooms", _family_name);
 
                             ds.SetShape(new GeometryObject[] { roomSolid });
@@ -310,7 +323,7 @@ namespace Revit3Drooms
                 }
             }
 
-            Debug.Print("Rooms total : {0}", roomNbre);
+            Debug.Print("Rooms total : {0}", roomNbre + "/" + m_Rooms.Count.ToString());
             Console.WriteLine("Total Rooms : " + roomNbre + "/" + m_Rooms.Count.ToString());
             return Result.Succeeded;
 
